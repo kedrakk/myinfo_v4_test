@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:test_myinfo_v4/controller/myinfo_controller.dart';
 import 'package:test_myinfo_v4/data/const.dart';
-import 'package:test_myinfo_v4/repo/myinfo_repo.dart';
+import 'package:test_myinfo_v4/di/main_di.dart';
 import 'package:test_myinfo_v4/utils/launch_helper.dart';
 import 'package:test_myinfo_v4/utils/loading.dart';
 
@@ -14,6 +14,16 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.abc,
+            ),
+          ),
+        ],
+      ),
       body: Center(
         child: GestureDetector(
           child: Image.asset(
@@ -22,12 +32,12 @@ class MyHomePage extends StatelessWidget {
           ),
           onTap: () async {
             showLoadingDialog(context);
-            final url = await MyInfoController(
-              myInfoRepo: MyInfoRepo(),
+            final res = await MyInfoController(
+              myInfoRepo: myInfoRepo,
             ).authorise();
             closeDialog(context);
-            if (url != null) {
-              launchToBrowser(url);
+            if (res != null) {
+              launchToBrowser(res);
             }
           },
         ),
