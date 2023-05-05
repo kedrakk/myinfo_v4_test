@@ -26,7 +26,7 @@ class MyInfoRepo {
     }
   }
 
-  Future<List<Map<String, dynamic>>> authoriseKeys() async {
+  Future<List<Map<String, dynamic>>> getJWKS() async {
     var url = authoriseJWKSURL;
     try {
       var response = await http.get(
@@ -75,8 +75,34 @@ class MyInfoRepo {
         body: body,
       );
       if (response.statusCode == 200) {
+        var body = jsonDecode(response.body);
+        return body["access_token"];
+      }
+      throw Exception(response.body.toString());
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<String> getPersonData({
+    required String dpop,
+    required String authorization,
+    required String sub,
+  }) async {
+    var url = "$backendURL/person/$sub?scope=$scope";
+    var headers = {
+      "Authorization": authorization,
+      "DPoP": dpop,
+    };
+    try {
+      var response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
         return response.body;
       }
+      print(response.body);
       throw Exception(response.body.toString());
     } catch (e) {
       throw Exception(e.toString());

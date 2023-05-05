@@ -21,23 +21,33 @@ class CallBackPage extends StatefulWidget {
 
 class _CallBackPageState extends State<CallBackPage> {
   String bearerToken = "";
+  String personData = "";
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _getData();
+      _getToken();
     });
   }
 
-  _getData() async {
+  _getToken() async {
     if (widget.code.isNotEmpty) {
       showLoadingDialog(context);
       bearerToken = await MyInfoController(myInfoRepo: myInfoRepo).getToken(
         code: widget.code,
       );
+      if (bearerToken.isNotEmpty) {
+        await _getData();
+      }
       closeDialog(context);
       setState(() {});
     }
+  }
+
+  _getData() async {
+    personData = await MyInfoController(myInfoRepo: myInfoRepo).getPersonData(
+      bearerToken: bearerToken,
+    );
   }
 
   @override
@@ -57,6 +67,14 @@ class _CallBackPageState extends State<CallBackPage> {
           Center(
             child: Text(
               "Bearer Token: $bearerToken",
+            ),
+          ),
+          const SizedBox(
+            height: 10,
+          ),
+          Center(
+            child: Text(
+              "Person Data: $personData",
             ),
           ),
           const SizedBox(

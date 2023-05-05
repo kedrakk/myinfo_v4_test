@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:basic_utils/basic_utils.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:jose/jose.dart';
 import 'package:pkce/pkce.dart';
@@ -48,7 +49,11 @@ mixin MyInfoHelper {
     };
 
     if (ath != null) {
-      payload['ath'] = ath;
+      payload.addAll(
+        {
+          'ath': ath,
+        },
+      );
     }
 
     var builder = JsonWebSignatureBuilder()
@@ -79,14 +84,6 @@ mixin MyInfoHelper {
         keyId: keyID(),
       );
 
-      // var kid = generateJwkThumbprint(privateJWK);
-
-      // //! add kid
-      // var jwk = privateJWK.toJson();
-      // var newJWK = Map<String, dynamic>.from(jwk);
-      // newJWK['kid'] = kid;
-      // var finalResult = JsonWebKey.fromJson(newJWK);
-
       return privateJWK;
     } else {
       var ecPublicKey = keyPair.publicKey as ECPublicKey;
@@ -95,14 +92,12 @@ mixin MyInfoHelper {
         publicPEM,
         keyId: keyID(),
       );
-      // var kid = generateJwkThumbprint(publicJWK);
 
       // //! add two new fields
       var jwk = publicJWK.toJson();
       var newJWK = Map<String, dynamic>.from(jwk);
       newJWK['use'] = 'sig';
       newJWK['alg'] = 'ES256';
-      // newJWK['kid'] = kid;
       var finalResult = JsonWebKey.fromJson(newJWK);
       return finalResult;
     }
@@ -113,18 +108,15 @@ mixin MyInfoHelper {
     var jwkRaw = JsonWebKey.fromPem(
       data,
     );
-    //var kid = generateJwkThumbprint(jwkRaw);
     var jsonFormat = jwkRaw.toJson();
     Map<String, dynamic> newJson = {};
     newJson.addAll(jsonFormat);
     newJson["use"] = "sig";
-    //newJson['kid'] = kid;
     var jwk = JsonWebKey.fromJson(newJson);
     return jwk;
   }
 
   static String keyID() {
-    //return "AFMnnKRWTaBYEhNfEB6iQ5ErC1yqGVyZchH8A7nl_yM";
     return generateRandomString(43);
   }
 
@@ -135,25 +127,7 @@ mixin MyInfoHelper {
   }
 
   static String generateJwkThumbprint(JsonWebKey jwkey) {
-    // var sha256 = SHA256Digest();
-    // var jwkThumbprintBuffer = sha256.process(
-    //   Uint8List.fromList(
-    //     utf8.encode(
-    //       jsonEncode(
-    //         jwkey.toJson(),
-    //       ),
-    //     ),
-    //   ),
-    // );
-    // var jwkThumbprint = base64Url.encode(jwkThumbprintBuffer);
-    // return jwkThumbprint;
     return jwkey.keyId ?? "";
-    // var jwk = jwkey.toJson();
-    // var res1 = JsonWebTokenClaims.fromJson(jwk);
-    // var res2 = res1.toBytes();
-    // var res3 = sha256.convert(res2).bytes;
-    // var res4 = base64.encode(res3);
-    // return res4;
   }
 
   static String generateClientAssertion(
@@ -183,5 +157,45 @@ mixin MyInfoHelper {
     var jwtToken = builder.build().toCompactSerialization();
 
     return jwtToken;
+  }
+
+  static JsonWebKeyStore convertMapsToJWKStore(
+    List<Map<String, dynamic>> keysMap,
+  ) {
+    JsonWebKeyStore jsonWebKeyStore = JsonWebKeyStore();
+    for (var element in keysMap) {
+      jsonWebKeyStore.addKey(
+        JsonWebKey.fromJson(
+          element,
+        ),
+      );
+    }
+    return jsonWebKeyStore;
+  }
+
+  static Future<String> verifyAccessToken(
+    String accessToken,
+    JsonWebKeyStore jsonWebKeyStore,
+  ) async {
+    final jwsData = JsonWebSignature.fromCompactSerialization(accessToken);
+    final isVerify = await jwsData.verify(jsonWebKeyStore);
+    if (isVerify) {
+      final josePayload = await jwsData.getPayload(jsonWebKeyStore);
+      var jsonPayload = jsonDecode(josePayload.stringContent);
+      var subData = jsonPayload["sub"];
+      return subData;
+    } else {
+      return "";
+    }
+  }
+
+  static String digestSha256(String input) {
+    List<int> sha256AccessToken = sha256.convert(utf8.encode(input)).bytes;
+    String base64URLEncodedHash = base64Url
+        .encode(sha256AccessToken)
+        .replaceAll('+', '-')
+        .replaceAll('/', '_')
+        .replaceAll('=', '');
+    return base64URLEncodedHash;
   }
 }
